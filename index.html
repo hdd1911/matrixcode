@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>CodeRain</title>
+	<link rel="stylesheet" href="style.css">
+	<meta name="viewport" content="width=device-width, minimum-scale=1">
+</head>
+<body>
+	<div class="container">
+		<div class="columns-wrapper">
+			<!--
+				Set data-is-active="active" in order to prevent using this column in the rain!
+				We use this column to calculate columnLineHeight on start.
+			-->
+			<p class="column initial" data-is-active="active">0</p>
+		</div>
+		<div class="shield"></div>
+	</div>
+	
+	<script>
+
+		'use strict';
+
+		// Variables:
+
+		// let chars = [
+		// 	1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+		// 	'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+		// ];
+
+		let chars = [
+			'1', '2', '3', '4', '5', '6', '7', '0', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
+			'J', 'K', 'L', 'M', 'N', 'T', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+			'l', 'm', 'n', 'o', 'p', 'q', 'r', 't', 'w', 'x', 'y', 'z'
+		];
+
+		let columnsWrapper = document.querySelector('.columns-wrapper');
+		let columnInitial = document.querySelector('.column.initial');
+
+		let columnsWrapperPadding = parseInt(getComputedStyle(columnsWrapper).paddingLeft);
+		let columnLineHeight =	parseInt(getComputedStyle(columnInitial).lineHeight);
+
+		let columnHeightChars = getColumnHeightChars(columnsWrapperPadding, columnLineHeight);
+		let columnHeightPxs = getColumnHeightPxs(columnsWrapperPadding, columnLineHeight);
+
+		let columnsNumber = Math.trunc( (window.innerWidth + columnsWrapperPadding * 2) / 12);
+
+		let timingFactor = columnHeightChars * 150;
+		let timingFactorHalf = timingFactor / 2;
+
+
+		// On start:
+
+		mobileAdressBarFix();
+		setColumns();
+		startTheRain();
+
+		document.documentElement.style.setProperty('--column-height', `${columnHeightPxs}px`);
+
+
+		// Functions:
+
+		// Put all the functions which aren't used outside in the parent function to reduce the
+		// time they are calling when parent function searches it in it's lexical environment
+
+		function mobileAdressBarFix() {
+			let vh = window.innerHeight * 0.01;
+			document.documentElement.style.setProperty('--vh', `${vh}px`);
+		}
+		
+		function getColumnHeightPxs(padding, lineHeight) {
+			return Math.trunc((window.innerHeight - padding * 2) / lineHeight) * lineHeight;
+		}
+
+		function getColumnHeightChars(padding, lineHeight) {
+			return Math.trunc((window.innerHeight - padding * 2) / lineHeight);
+		}
+
+
+		function setColumns() {
+			
+			let dif = columnsWrapper.childElementCount - columnsNumber;
+
+			if (dif > 0) { // Screen gets smaller
+				for (let i = 0; i < dif; i++) {
+					columnsWrapper.removeChild(columnsWrapper.lastChild);
+				}
+			} else if (dif < 0) { // Screen gets bigger
+				for (let i = 0; i < Math.abs(dif); i++) {
+					addColumn();
+				}
+			}
+
+			function addColumn() {
+	
+				let newColumn = document.createElement('p');
+				newColumn.className = 'column';
+				newColumn.innerHTML = '';
+				newColumn.setAttribute('data-is-active', false);
+				columnsWrapper.appendChild(newColumn);
+	
+			}
+
+		}
+
+
+		function startTheRain() {
+			
+			document.querySelectorAll('.column').forEach( (item) => {
+
+				if (item.getAttribute('data-is-active') === 'false') {
+
+					item.setAttribute('data-is-active', true);
+					startRaindropCycle.call(item);
+
+				}
+
+			} );
+
+			function startRaindropCycle() {
+	
+				let counter = 0;
+				let tickInContext = tick.bind(this);
+				
+				// First drop delay (random 0-30 seconds)
+				let timer = setTimeout( tickInContext, Math.floor(Math.random() * 30000) );
+				
+				function tick() {
+	
+					addRaindrop.call(this);
+					counter++;
+		
+					if (counter < columnHeightChars) {
+	
+						// 2nd and following drops delay
+						timer = setTimeout(tickInContext, 50);
+	
+					} else {
+	
+						 // Garbage collector
+						clearTimeout(timer);
+	
+						// New cycle start delay after raindrop reaches the bottom
+						setTimeout( () => {
+							this.innerHTML = '';
+							startRaindropCycle.call(this);
+						}, timingFactor);
+		
+					}
+	
+					function addRaindrop() {
+			
+						// Create a span
+						let newRaindrop = document.createElement('span');
+						newRaindrop.className = 'raindrop new';
+						
+						// Take random char from array
+						newRaindrop.innerText = chars[Math.floor(Math.random() * chars.length)];
+			
+						// Add a char to the column
+						this.appendChild(newRaindrop);
+			
+						// Drop's first blink delay
+						setTimeout( () => {
+							newRaindrop.classList.remove('new');
+						}, 75);
+			
+						// Drops disappear from 5 to 10 sec after they appear
+						setTimeout( () => {
+							newRaindrop.classList.add('old');
+						}, Math.floor(Math.random() *
+							(timingFactor - timingFactorHalf)) + timingFactorHalf);
+											
+						// Every char switch from 1 to 5 sec (unfortunatelly it causes a huge
+						// performance issues but I decided to keep this part of code for future)
+	
+						// setInterval( () => {
+						// 	newRaindrop.innerText = chars[Math.floor(Math.random() * chars.length)];
+						// }, Math.floor(Math.random() * (10000 - 1000)) + 1000);
+			
+					}
+			
+				}
+	
+			}
+
+		}
+
+
+		// Listener(s):
+		
+		window.addEventListener('resize', () => {
+			
+			columnsNumber = Math.trunc( (window.innerWidth + columnsWrapperPadding * 2) / 12);
+			columnHeightChars = getColumnHeightChars(columnsWrapperPadding, columnLineHeight);
+			columnHeightPxs = getColumnHeightPxs(columnsWrapperPadding, columnLineHeight);
+
+			timingFactor = columnHeightChars * 150;
+			timingFactorHalf = timingFactor / 2;
+			
+			mobileAdressBarFix();
+			setColumns();
+			startTheRain();
+
+			document.documentElement.style.setProperty('--column-height', `${columnHeightPxs}px`);
+
+		});
+
+	</script>
+
+</body>
+</html>
